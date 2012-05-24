@@ -32,6 +32,16 @@ bool Node::Stat(DiskInterface* disk_interface) {
   return mtime_ > 0;
 }
 
+void Node::MarkAllDirty() {
+  MarkDirty();
+  if (Edge* e = in_edge()) {
+    for (vector<Node*>::iterator n = e->inputs_.begin(); n != e->inputs_.end();
+         ++n) {
+      (*n)->MarkAllDirty();
+    }
+  }
+}
+
 bool Edge::RecomputeDirty(State* state, DiskInterface* disk_interface,
                           string* err) {
   bool dirty = false;

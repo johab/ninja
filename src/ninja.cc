@@ -94,6 +94,7 @@ void Usage(const BuildConfig& config) {
 "  -k N     keep going until N jobs fail [default=1]\n"
 "  -n       dry run (don't run commands but pretend they succeeded)\n"
 "  -v       show all command lines while building\n"
+"  -B       unconditionally build all given targets\n"
 "\n"
 "  -d MODE  enable debugging (use -d list to list modes)\n"
 "  -t TOOL  run a subtool\n"
@@ -646,7 +647,7 @@ int main(int argc, char** argv) {
 
   int opt;
   while (tool.empty() &&
-         (opt = getopt_long(argc, argv, "d:f:hj:k:l:nt:vC:V", kLongOptions,
+         (opt = getopt_long(argc, argv, "d:f:hj:k:l:nt:vC:VB", kLongOptions,
                             NULL)) != -1) {
     switch (opt) {
       case 'd':
@@ -684,6 +685,9 @@ int main(int argc, char** argv) {
         break;
       case 'v':
         globals.config.verbosity = BuildConfig::VERBOSE;
+        break;
+      case 'B':
+        globals.config.always_build = true;
         break;
       case 't':
         tool = optarg;
