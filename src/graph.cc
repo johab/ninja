@@ -35,6 +35,8 @@ bool Node::Stat(DiskInterface* disk_interface) {
 void Node::MarkAllDirty() {
   MarkDirty();
   if (Edge* e = in_edge()) {
+    if (!e->rule().generator())
+      e->outputs_ready_ = false;
     for (vector<Node*>::iterator n = e->inputs_.begin(); n != e->inputs_.end();
          ++n) {
       (*n)->MarkAllDirty();

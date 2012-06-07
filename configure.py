@@ -119,14 +119,13 @@ else:
     cflags = ['-g', '-Wall', '-Wextra',
               '-Wno-deprecated',
               '-Wno-unused-parameter',
-              '-fno-rtti',
               '-fno-exceptions',
               '-fvisibility=hidden', '-pipe',
               "'-DNINJA_PYTHON=\"%s\"'" % (options.with_python,)]
     if options.debug:
         cflags += ['-D_GLIBCXX_DEBUG', '-D_GLIBCXX_DEBUG_PEDANTIC']
     else:
-        cflags += ['-O2', '-DNDEBUG']
+        cflags += ['-O2', '-DNDEBUG', '-fno-rtti' ]
     if 'clang' in os.path.basename(CXX):
         cflags += ['-fcolor-diagnostics']
     ldflags = ['-L$builddir']

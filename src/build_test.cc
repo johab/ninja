@@ -1028,3 +1028,72 @@ TEST_F(BuildTest, StatusFormatReplacePlaceholder) {
   EXPECT_EQ("[%/s0/t0/r0/u0/f0]",
             status_.FormatProgressStatus("[%%/s%s/t%t/r%r/u%u/f%f]"));
 }
+
+TEST_F(BuildTest, TwoStepBlop) {
+  string err;
+  EXPECT_TRUE(builder_.AddTarget("cat12", &err));
+  ASSERT_EQ("", err);
+  EXPECT_TRUE(builder_.Build(&err));
+  EXPECT_EQ("", err);
+  ASSERT_EQ(3u, commands_ran_.size());
+  // Depending on how the pointers work out, we could've ran
+  // the first two commands in either order.
+  EXPECT_TRUE((commands_ran_[0] == "cat in1 > cat1" &&
+               commands_ran_[1] == "cat in1 in2 > cat2") ||
+              (commands_ran_[1] == "cat in1 > cat1" &&
+               commands_ran_[0] == "cat in1 in2 > cat2"));
+
+  EXPECT_EQ("cat cat1 cat2 > cat12", commands_ran_[2]);
+
+  // No work to do.
+  ASSERT_TRUE(builder_.AlreadyUpToDate());
+
+  // EXPECT_TRUE(builder_.Build(&err));
+  // ASSERT_EQ("", err);
+  // ASSERT_EQ(3u, commands_ran_.size());
+
+
+  commands_ran_.clear();
+  state_.Reset();
+  config_.always_build = true;
+  EXPECT_TRUE(builder_.AddTarget("cat12", &err));
+  ASSERT_EQ("", err);
+  EXPECT_TRUE(builder_.Build(&err));
+  ASSERT_EQ("", err);
+  ASSERT_EQ(1u, commands_ran_.size());
+  EXPECT_EQ("cat cat1 cat2 > cat12", commands_ran_[0]);
+
+  // // No work to do.
+  // // commands_ran_.clear();
+  // // state_.Reset();
+  // // Force build
+  // config_.always_build = true;
+  // EXPECT_TRUE(builder_.AddTarget("cat12", &err));
+  // ASSERT_EQ("", err);
+  // EXPECT_TRUE(builder_.Build(&err));
+  // ASSERT_EQ("", err);
+  // ASSERT_EQ(3u, commands_ran_.size());
+  // // Depending on how the pointers work out, we could've ran
+  // // the first two commands in either order.
+  // EXPECT_TRUE((commands_ran_[0] == "cat in1 > cat1" &&
+  //              commands_ran_[1] == "cat in1 in2 > cat2") ||
+  //             (commands_ran_[1] == "cat in1 > cat1" &&
+  //              commands_ran_[0] == "cat in1 in2 > cat2"));
+
+  // EXPECT_EQ("cat cat1 cat2 > cat12", commands_ran_[2]);
+
+
+  // now_++;
+
+  // // Modifying in2 requires rebuilding one intermediate file
+  // // and the final file.
+  // fs_.Create("in2", now_, "");
+  // state_.Reset();
+  // EXPECT_TRUE(builder_.AddTarget("cat12", &err));
+  // ASSERT_EQ("", err);
+  // EXPECT_TRUE(builder_.Build(&err));
+  // ASSERT_EQ("", err);
+  // ASSERT_EQ(5u, commands_ran_.size());
+  // EXPECT_EQ("cat in1 in2 > cat2", commands_ran_[3]);
+  // EXPECT_EQ("cat cat1 cat2 > cat12", commands_ran_[4]);
+}
