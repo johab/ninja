@@ -65,6 +65,8 @@ bool Subprocess::Start(SubprocessSet* set, const string& command) {
         break;
       if (sigaction(SIGTERM, &set->old_term_act_, 0) < 0)
         break;
+      if (sigaction(SIGTSTP, &set->old_term_act_, 0) < 0)
+        break;
       if (sigprocmask(SIG_SETMASK, &set->old_mask_, 0) < 0)
         break;
 
@@ -151,6 +153,7 @@ SubprocessSet::SubprocessSet() {
   sigemptyset(&set);
   sigaddset(&set, SIGINT);
   sigaddset(&set, SIGTERM);
+  sigaddset(&set, SIGTSTP);
   if (sigprocmask(SIG_BLOCK, &set, &old_mask_) < 0)
     Fatal("sigprocmask: %s", strerror(errno));
 
@@ -161,6 +164,7 @@ SubprocessSet::SubprocessSet() {
     Fatal("sigaction: %s", strerror(errno));
   if (sigaction(SIGTERM, &act, &old_term_act_) < 0)
     Fatal("sigaction: %s", strerror(errno));
+  InstallSigTSTPHandler();
 }
 
 SubprocessSet::~SubprocessSet() {
@@ -170,6 +174,7 @@ SubprocessSet::~SubprocessSet() {
     Fatal("sigaction: %s", strerror(errno));
   if (sigaction(SIGTERM, &old_term_act_, 0) < 0)
     Fatal("sigaction: %s", strerror(errno));
+  RestoreSigTSTPHandler();
   if (sigprocmask(SIG_SETMASK, &old_mask_, 0) < 0)
     Fatal("sigprocmask: %s", strerror(errno));
 }
@@ -201,6 +206,8 @@ bool SubprocessSet::DoWork() {
 
   interrupted_ = 0;
   int ret = ppoll(&fds.front(), nfds, NULL, &old_mask_);
+  if (IsSuspended())
+    Suspend();
   if (ret == -1) {
     if (errno != EINTR) {
       perror("ninja: ppoll");
@@ -248,6 +255,8 @@ bool SubprocessSet::DoWork() {
 
   interrupted_ = 0;
   int ret = pselect(nfds, &set, 0, 0, 0, &old_mask_);
+  if (IsSuspended())
+    Suspend();
   if (ret == -1) {
     if (errno != EINTR) {
       perror("ninja: pselect");
@@ -290,4 +299,72 @@ void SubprocessSet::Clear() {
        i != running_.end(); ++i)
     delete *i;
   running_.clear();
+}
+
+void SubprocessSet::Suspend() {
+  assert(IsSuspended());
+
+  // errno may change during the course of this function.
+  int saved_errno = errno;
+
+  // Suspend children.
+  for (vector<Subprocess*>::iterator i = running_.begin();
+       i != running_.end(); ++i)
+    kill(-(*i)->pid_, SIGTSTP);
+
+  // Tell users what we have done.
+  {
+    // We use write to bypass the buffer that may not be flush before
+    // we re-raise the SIGTSTP for us.
+    const char* msg = "\nninja: entire build suspended.\n";
+    write(STDOUT_FILENO, msg, strlen(msg));
+  }
+
+  // Reset SIGTSTP handler to the default and re-raise the signal for us
+  // to trigger the default behavior when the signal will be unblock.
+  RestoreSigTSTPHandler();
+
+  raise(SIGTSTP);
+
+  // Unblock SIGTSP so that the pending signal we just raised can trigger
+  // the default handler of SIGTSTP we just restored. Thus, we get stopped
+  // right after sigprocmask call.
+  sigset_t tstp_mask;
+  sigset_t old_mask;
+  sigemptyset(&tstp_mask);
+  sigaddset(&tstp_mask, SIGTSTP);
+  if (sigprocmask(SIG_UNBLOCK, &tstp_mask, &old_mask) < 0)
+    Fatal("cannot unblock SIGTSTP: %s", strerror(errno));
+
+  // We are stopped here until we receive SIGCONT.
+
+  // Reblock SIGTSTP like it was before this handler started.
+  if (sigprocmask(SIG_SETMASK, &old_mask, NULL) < 0)
+    Fatal("cannot reblock SIGTSTP: %s", strerror(errno));
+
+  // Re-install the handler.
+  InstallSigTSTPHandler();
+
+  // Wake-up children.
+  for (vector<Subprocess*>::iterator i = running_.begin();
+       i != running_.end(); ++i)
+    kill(-(*i)->pid_, SIGCONT);
+
+  // Restore errno.
+  errno = saved_errno;
+  // Reset interruption flag.
+  interrupted_ = 0;
+}
+
+void SubprocessSet::InstallSigTSTPHandler() {
+  struct sigaction act;
+  memset(&act, 0, sizeof(act));
+  act.sa_handler = SetInterruptedFlag;
+  if (sigaction(SIGTSTP, &act, &old_tstp_act_) < 0)
+    Fatal("cannot install SIGTSTP handler: %s", strerror(errno));
+}
+
+void SubprocessSet::RestoreSigTSTPHandler() {
+  if (sigaction(SIGTSTP, &old_tstp_act_, 0) < 0)
+    Fatal("cannot restore STGTSTP handler: %s", strerror(errno));
 }

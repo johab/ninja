@@ -93,10 +93,17 @@ struct SubprocessSet {
   static int interrupted_;
 
   static bool IsInterrupted() { return interrupted_ != 0; }
+  static bool IsSuspended() { return interrupted_ == SIGTSTP; }
 
   struct sigaction old_int_act_;
   struct sigaction old_term_act_;
+  struct sigaction old_tstp_act_;
   sigset_t old_mask_;
+
+  void Suspend();
+  void InstallSigTSTPHandler();
+  void RestoreSigTSTPHandler();
+
 #endif
 };
 
