@@ -140,11 +140,10 @@ const string& Subprocess::GetOutput() const {
   return buf_;
 }
 
-bool SubprocessSet::interrupted_;
+int SubprocessSet::interrupted_;
 
 void SubprocessSet::SetInterruptedFlag(int signum) {
-  (void) signum;
-  interrupted_ = true;
+  interrupted_ = signum;
 }
 
 SubprocessSet::SubprocessSet() {
@@ -200,14 +199,14 @@ bool SubprocessSet::DoWork() {
     ++nfds;
   }
 
-  interrupted_ = false;
+  interrupted_ = 0;
   int ret = ppoll(&fds.front(), nfds, NULL, &old_mask_);
   if (ret == -1) {
     if (errno != EINTR) {
       perror("ninja: ppoll");
       return false;
     }
-    return interrupted_;
+    return IsInterrupted();
   }
 
   nfds_t cur_nfd = 0;
@@ -228,7 +227,7 @@ bool SubprocessSet::DoWork() {
     ++i;
   }
 
-  return interrupted_;
+  return IsInterrupted();
 }
 
 #else  // !defined(USE_PPOLL)
@@ -247,14 +246,14 @@ bool SubprocessSet::DoWork() {
     }
   }
 
-  interrupted_ = false;
+  interrupted_ = 0;
   int ret = pselect(nfds, &set, 0, 0, 0, &old_mask_);
   if (ret == -1) {
     if (errno != EINTR) {
       perror("ninja: pselect");
       return false;
     }
-    return interrupted_;
+    return IsInterrupted();
   }
 
   for (vector<Subprocess*>::iterator i = running_.begin();
@@ -271,7 +270,7 @@ bool SubprocessSet::DoWork() {
     ++i;
   }
 
-  return interrupted_;
+  return IsInterrupted();
 }
 #endif  // !defined(USE_PPOLL)
 
@@ -286,7 +285,7 @@ Subprocess* SubprocessSet::NextFinished() {
 void SubprocessSet::Clear() {
   for (vector<Subprocess*>::iterator i = running_.begin();
        i != running_.end(); ++i)
-    kill(-(*i)->pid_, SIGINT);
+    kill(-(*i)->pid_, interrupted_);
   for (vector<Subprocess*>::iterator i = running_.begin();
        i != running_.end(); ++i)
     delete *i;
