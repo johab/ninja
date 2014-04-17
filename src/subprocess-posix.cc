@@ -190,6 +190,28 @@ Subprocess *SubprocessSet::Add(const string& command) {
 }
 
 #ifdef USE_PPOLL
+
+static int xpoll(struct pollfd* fds, nfds_t nfds,
+                 const struct timespec* timeout_ts, const sigset_t* sigmask)
+{
+#  ifdef UNPROTECTED_SYSCALL
+  sigset_t origmask;
+  int timeout;
+
+  timeout = (timeout_ts == NULL) ? -1 :
+    (timeout_ts->tv_sec * 1000 + timeout_ts->tv_nsec / 1000000);
+  if (sigprocmask(SIG_SETMASK, sigmask, &origmask) < 0)
+    Fatal("sigprocmask: %s", strerror(errno));
+  // WARNING: testing interrupted_ here creates a race-condition.
+  int ret = poll(fds, nfds, timeout);
+  if (sigprocmask(SIG_SETMASK, &origmask, NULL) < 0)
+    Fatal("sigprocmask: %s", strerror(errno));
+  return ret;
+#  else
+  return ppoll(fds, nfds, timeout_ts, sigmask);
+#  endif // UNPROTECTED_SYSCALL
+}
+
 bool SubprocessSet::DoWork() {
   vector<pollfd> fds;
   nfds_t nfds = 0;
@@ -205,7 +227,7 @@ bool SubprocessSet::DoWork() {
   }
 
   interrupted_ = 0;
-  int ret = ppoll(&fds.front(), nfds, NULL, &old_mask_);
+  int ret = xpoll(&fds.front(), nfds, NULL, &old_mask_);
   if (IsSuspended())
     Suspend();
   if (ret == -1) {
@@ -238,6 +260,35 @@ bool SubprocessSet::DoWork() {
 }
 
 #else  // !defined(USE_PPOLL)
+
+static int xselect(int nfds, fd_set* readfds, fd_set* writefds,
+                   fd_set* exceptfds, const struct timespec* timeout_ts,
+                   const sigset_t* sigmask)
+{
+#  ifdef UNPROTECTED_SYSCALL
+  sigset_t origmask;
+  struct timeval timeout_tv;
+  struct timeval* timeout;
+
+  if (timeout_ts == NULL)
+    timeout = NULL;
+  else {
+    timeout_tv.tv_sec = timeout_ts->tv_sec;
+    timeout_tv.tv_usec = timeout_ts->tv_nsec * 1000;
+    timeout = &timeout_tv;
+  }
+  if (sigprocmask(SIG_SETMASK, sigmask, &origmask) < 0)
+    Fatal("sigprocmask: %s", strerror(errno));
+  // WARNING: testing interrupted_ here creates a race-condition.
+  int ret = select(nfds, readfds, writefds, exceptfds, timeout);
+  if (sigprocmask(SIG_SETMASK, &origmask, NULL) < 0)
+    Fatal("sigprocmask: %s", strerror(errno));
+  return ret;
+#  else
+  return pselect(nfds, readfds, writefds, exceptfds, timeout_ts, sigmask);
+#  endif // UNPROTECTED_SYSCALL
+}
+
 bool SubprocessSet::DoWork() {
   fd_set set;
   int nfds = 0;
@@ -254,7 +305,7 @@ bool SubprocessSet::DoWork() {
   }
 
   interrupted_ = 0;
-  int ret = pselect(nfds, &set, 0, 0, 0, &old_mask_);
+  int ret = xselect(nfds, &set, 0, 0, 0, &old_mask_);
   if (IsSuspended())
     Suspend();
   if (ret == -1) {

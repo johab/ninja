@@ -52,6 +52,9 @@ parser.add_option('--with-python', metavar='EXE',
 parser.add_option('--force-pselect', action='store_true',
                   help='ppoll() is used by default where available, '
                        'but some platforms may need to use pselect instead',)
+parser.add_option('--unprotected-syscall', action='store_true',
+                  help='Do not use ppoll()/pselect() but rather '
+                       'poll()/select().',)
 (options, args) = parser.parse_args()
 if args:
     print('ERROR: extra unparsed command-line arguments:', args)
@@ -173,6 +176,9 @@ else:
 if (platform.is_linux() or platform.is_openbsd() or platform.is_bitrig()) and \
         not options.force_pselect:
     cflags.append('-DUSE_PPOLL')
+
+if options.unprotected_syscall:
+    cflags.append('-DUNPROTECTED_SYSCALL')
 
 def shell_escape(str):
     """Escape str such that it's interpreted as a single argument by
