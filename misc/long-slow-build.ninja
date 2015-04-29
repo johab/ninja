@@ -2,7 +2,7 @@
 # Use like: ninja -f misc/long-slow-build.ninja all
 
 rule sleep
-  command = sleep 1
+  command = sleep 30
   description = SLEEP $out
 
 build 0: sleep README

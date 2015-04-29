@@ -42,6 +42,7 @@ struct Subprocess {
   bool Done() const;
 
   const string& GetOutput() const;
+  int InterruptedBy() const { return interrupted_by_; }
 
  private:
   Subprocess(bool use_console);
@@ -65,6 +66,7 @@ struct Subprocess {
   pid_t pid_;
 #endif
   bool use_console_;
+  int interrupted_by_;
 
   friend struct SubprocessSet;
 };

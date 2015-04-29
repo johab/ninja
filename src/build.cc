@@ -533,6 +533,8 @@ bool RealCommandRunner::WaitForCommand(Result* result) {
   }
 
   result->status = subproc->Finish();
+  if (result->status == ExitInterrupted)
+    result->interrupted_by = subproc->InterruptedBy();
   result->output = subproc->GetOutput();
 
   map<Subprocess*, Edge*>::iterator e = subproc_to_edge_.find(subproc);
@@ -662,7 +664,11 @@ bool Builder::Build(string* err) {
           result.status == ExitInterrupted) {
         Cleanup();
         status_->BuildFinished();
-        *err = "interrupted by user";
+        char buf[32];
+        snprintf(buf, sizeof(buf), "received signal %d",
+                 result.interrupted_by);
+        printf("\nERROR: '%s'\n", buf);
+        *err = string(buf);
         return false;
       }
 

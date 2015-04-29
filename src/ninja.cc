@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #ifdef _WIN32
 #include "getopt.h"
@@ -954,8 +955,12 @@ int NinjaMain::RunBuild(int argc, char** argv) {
 
   if (!builder.Build(&err)) {
     printf("ninja: build stopped: %s.\n", err.c_str());
-    if (err.find("interrupted by user") != string::npos) {
-      return 2;
+    const char* interruption_msg = "received signal ";
+    if (err.find(interruption_msg) != string::npos) {
+      int signum = atoi(err.substr(strlen(interruption_msg)).c_str());
+      printf("signum: %d\n", signum);
+      raise(signum);
+      Fatal("should have been terminated first");
     }
     return 1;
   }

@@ -591,6 +591,7 @@ bool FakeCommandRunner::WaitForCommand(Result* result) {
 
   if (edge->rule().name() == "interrupt" ||
       edge->rule().name() == "touch-interrupt") {
+    result->interrupted_by = SIGINT;
     result->status = ExitInterrupted;
     return true;
   }
@@ -1518,7 +1519,7 @@ TEST_F(BuildTest, InterruptCleanup) {
   EXPECT_TRUE(builder_.AddTarget("out1", &err));
   EXPECT_EQ("", err);
   EXPECT_FALSE(builder_.Build(&err));
-  EXPECT_EQ("interrupted by user", err);
+  EXPECT_EQ("received signal 2", err);
   builder_.Cleanup();
   EXPECT_GT(fs_.Stat("out1", &err), 0);
   err = "";
@@ -1527,7 +1528,7 @@ TEST_F(BuildTest, InterruptCleanup) {
   EXPECT_TRUE(builder_.AddTarget("out2", &err));
   EXPECT_EQ("", err);
   EXPECT_FALSE(builder_.Build(&err));
-  EXPECT_EQ("interrupted by user", err);
+  EXPECT_EQ("received signal 2", err);
   builder_.Cleanup();
   EXPECT_EQ(0, fs_.Stat("out2", &err));
 }

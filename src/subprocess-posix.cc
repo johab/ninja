@@ -26,7 +26,8 @@
 #include "util.h"
 
 Subprocess::Subprocess(bool use_console) : fd_(-1), pid_(-1),
-                                           use_console_(use_console) {
+                                           use_console_(use_console),
+                                           interrupted_by_(0) {
 }
 
 Subprocess::~Subprocess() {
@@ -136,8 +137,10 @@ ExitStatus Subprocess::Finish() {
     if (exit == 0)
       return ExitSuccess;
   } else if (WIFSIGNALED(status)) {
-    if (WTERMSIG(status) == SIGINT || WTERMSIG(status) == SIGTERM)
+    if (WTERMSIG(status) == SIGINT || WTERMSIG(status) == SIGTERM) {
+      interrupted_by_ = WTERMSIG(status);
       return ExitInterrupted;
+    }
   }
   return ExitFailure;
 }

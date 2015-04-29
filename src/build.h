@@ -109,10 +109,11 @@ struct CommandRunner {
 
   /// The result of waiting for a command.
   struct Result {
-    Result() : edge(NULL) {}
+    Result() : edge(NULL), interrupted_by(0) {}
     Edge* edge;
     ExitStatus status;
     string output;
+    int interrupted_by;
     bool success() const { return status == ExitSuccess; }
   };
   /// Wait for a command to complete, or return false if interrupted.
