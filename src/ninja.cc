@@ -347,6 +347,13 @@ int NinjaMain::ToolQuery(const Options* options, int argc, char* argv[]) {
 
     printf("%s:\n", node->path().c_str());
     if (Edge* edge = node->in_edge()) {
+      ImplicitDepLoader dep_loader(&state_, &deps_log_, &disk_interface_);
+      if (!dep_loader.LoadDeps(edge, &err)) {
+        if (!err.empty()) {
+          Error("%s", err.c_str());
+          return 1;
+        }
+      }
       printf("  input: %s\n", edge->rule_->name().c_str());
       for (int in = 0; in < (int)edge->inputs_.size(); in++) {
         const char* label = "";
