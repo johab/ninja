@@ -199,6 +199,7 @@ TEST_F(SubprocessTest, Suspend) {
       subprocs_.Add(// Make sure there is the check variable name.
                     "set -o nounset; "
                     "set -o errexit; "
+                    "echo ME_PID=$$ PPID=$PPID; "
                     // Ensure SIGTSTP works.
                     "trap 'echo SIGTSPT check receive' TSTP; "
                     "kill -TSTP $$; "
