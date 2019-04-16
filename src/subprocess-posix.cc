@@ -424,6 +424,8 @@ void SubprocessSet::Suspend() {
   for (vector<Subprocess*>::iterator i = running_.begin();
        i != running_.end(); ++i)
     if (!(*i)->use_console_) {
+      DBG("kill SIGUSR1");
+      Xkill(-(*i)->pid_, SIGUSR1);
       DBG("kill SIGTSTP");
       char buf[64];
       itoa((*i)->pid_, buf);
