@@ -113,7 +113,10 @@ bool Subprocess::Start(SubprocessSet* set, const string& command) {
     // closed when the subprocess finishes, which then notifies ninja.
   }
 #ifdef POSIX_SPAWN_USEVFORK
+# warning "using vfork"
   flags |= POSIX_SPAWN_USEVFORK;
+#else
+# warning "NO vfork"
 #endif
 
   err = posix_spawnattr_setflags(&attr, flags);
