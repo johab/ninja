@@ -208,7 +208,7 @@ TEST_F(SubprocessTest, Suspend) {
                     // Resume Ninja once it has suspended us.
                     "echo trap SIGTSTP at $(date +%s.%N); "
                     "trap 'echo SIGUSR1' USR1; "
-                    "trap 'echo SIGTSTP' TSTP; "
+                    "trap 'echo SIGTSTP; tstp_handler_called=true; kill -CONT $PPID' TSTP; "
                     // Exit normally when we are resumed by Ninja.
                     "trap 'echo SIGCONT; $tstp_handler_called && exit 0; exit 1' CONT; "
                     // Suspend Ninja.
