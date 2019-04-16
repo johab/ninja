@@ -199,6 +199,9 @@ TEST_F(SubprocessTest, Suspend) {
       subprocs_.Add(// Make sure there is the check variable name.
                     "set -o nounset; "
                     "set -o errexit; "
+                    // Ensure SIGTSTP works.
+                    "trap 'echo SIGTSPT check receive' TSTP; "
+                    "kill -TSTP $$; "
                     // Useful to check SIGTSTP is caught before SIGCONT.
                     "tstp_handler_called=false; "
                     // Resume Ninja once it has suspended us.
