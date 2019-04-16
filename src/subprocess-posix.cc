@@ -371,8 +371,15 @@ void SubprocessSet::Clear() {
   running_.clear();
 }
 
+static void DBG(const char* msg) {
+  write(STDERR_FILENO, "DBG: ", 4);
+  write(STDERR_FILENO, msg, strlen(msg));
+  write(STDERR_FILENO, "\n", 1);
+}
+
 void SubprocessSet::Suspend() {
   assert(IsSuspended());
+  DBG("Suspend begin");
 
   // errno may change during the course of this function.
   int saved_errno = errno;
@@ -380,8 +387,10 @@ void SubprocessSet::Suspend() {
   // Suspend children.
   for (vector<Subprocess*>::iterator i = running_.begin();
        i != running_.end(); ++i)
-    if (!(*i)->use_console_)
+    if (!(*i)->use_console_) {
+      DBG("kill SIGTSTP");
       Xkill(-(*i)->pid_, SIGTSTP);
+    }
 
   // Tell users what we have done.
   {
@@ -395,6 +404,7 @@ void SubprocessSet::Suspend() {
   // Reset SIGTSTP handler to the default and re-raise the signal for us
   // to trigger the default behavior when the signal will be unblock.
   RestoreSigTSTPHandler();
+  DBG("raise SIGTSTP");
   raise(SIGTSTP);
 
   // Unblock SIGTSP so that the pending signal we just raised can trigger
@@ -426,6 +436,7 @@ void SubprocessSet::Suspend() {
   errno = saved_errno;
   // Reset interruption flag.
   interrupted_ = 0;
+  DBG("Suspend end");
 }
 
 void SubprocessSet::InstallSigTSTPHandler() {
