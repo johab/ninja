@@ -211,7 +211,7 @@ TEST_F(SubprocessTest, Suspend) {
                     // Exit normally when we are resumed by Ninja.
                     "trap 'echo SIGCONT; $tstp_handler_called && exit 0; exit 1' CONT; "
                     // Suspend Ninja.
-                    "echo kill TSTP; "
+                    "echo kill TSTP at $(date +%s.%N); "
                     "kill -TSTP $PPID; "
                     // Give 10s max to Ninja to send SIGTSTP to its children.
                     // Note: using "sleep 10" slow down the test in the success
