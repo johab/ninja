@@ -206,6 +206,7 @@ TEST_F(SubprocessTest, Suspend) {
                     // Useful to check SIGTSTP is caught before SIGCONT.
                     "tstp_handler_called=false; "
                     // Resume Ninja once it has suspended us.
+                    "echo trap SIGTSTP at $(date +%s.%N); "
                     "trap 'echo SIGTSTP; tstp_handler_called=true; kill -CONT $PPID' TSTP; "
                     // Exit normally when we are resumed by Ninja.
                     "trap 'echo SIGCONT; $tstp_handler_called && exit 0; exit 1' CONT; "

@@ -26,6 +26,8 @@
 #include <spawn.h>
 #include <sys/ioctl.h>
 
+#include <sys/time.h> // gettimeofday
+
 extern char** environ;
 
 #include "util.h"
@@ -371,20 +373,24 @@ void SubprocessSet::Clear() {
   running_.clear();
 }
 
-static void DBG(const char* msg) {
-  write(STDERR_FILENO, "DBG: ", 4);
-  write(STDERR_FILENO, msg, strlen(msg));
-  write(STDERR_FILENO, "\n", 1);
+static time_t gettimestamp(void)
+{
+  struct timeval time;
+
+  if (gettimeofday(&time, NULL) < 0)
+    Fatal("gettimeofday: %s", strerror(errno));
+  /* FIXME(Nicolas Despres): May overflow.  */
+  return time.tv_sec * 1*1000*1000 + time.tv_usec;
 }
 
-static char* itoa(int i, char b[]){
+static char* itoa(long long i, char b[]){
     char const digit[] = "0123456789";
     char* p = b;
     if(i<0){
         *p++ = '-';
         i *= -1;
     }
-    int shifter = i;
+    long long shifter = i;
     do{ //Move to where representation ends
         ++p;
         shifter = shifter/10;
@@ -395,6 +401,16 @@ static char* itoa(int i, char b[]){
         i = i/10;
     }while(i);
     return b;
+}
+
+static void DBG(const char* msg) {
+  write(STDERR_FILENO, "DBG: ", 4);
+  char buf[64];
+  itoa(gettimestamp(), buf);
+  write(STDERR_FILENO, buf, strlen(buf));
+  write(STDERR_FILENO, ": ", 2);
+  write(STDERR_FILENO, msg, strlen(msg));
+  write(STDERR_FILENO, "\n", 1);
 }
 
 void SubprocessSet::Suspend() {
