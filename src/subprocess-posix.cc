@@ -412,7 +412,7 @@ void SubprocessSet::Suspend() {
       char buf[64];
       itoa((*i)->pid_, buf);
       DBG(buf);
-      Xkill(-(*i)->pid_, SIGTSTP);
+      Xkill((*i)->pid_, SIGTSTP);
     }
 
   // Tell users what we have done.
