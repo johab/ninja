@@ -200,19 +200,21 @@ TEST_F(SubprocessTest, Suspend) {
                     "set -o nounset; "
                     "set -o errexit; "
                     "echo ME_PID=$$ PPID=$PPID; "
+                    "log() { echo \"TST:$(date +%s.%N): $@\"; }; "
                     // Ensure SIGTSTP works.
                     "trap 'echo SIGTSPT check receive' TSTP; "
                     "kill -TSTP $$; "
                     // Useful to check SIGTSTP is caught before SIGCONT.
                     "tstp_handler_called=false; "
                     // Resume Ninja once it has suspended us.
-                    "echo trap SIGTSTP at $(date +%s.%N); "
-                    "trap 'echo SIGUSR1' USR1; "
-                    "trap 'echo SIGTSTP; tstp_handler_called=true; kill -CONT $PPID' TSTP; "
+                    "log trap SIGTSTP; "
+                    "trap 'log caught SIGUSR1' USR1; "
+                    "trap 'log caught SIGTSTP; tstp_handler_called=true; sleep 2; kill -CONT $PPID' TSTP; "
                     // Exit normally when we are resumed by Ninja.
-                    "trap 'echo SIGCONT; $tstp_handler_called && exit 0; exit 1' CONT; "
+                    "trap 'log SIGCONT; $tstp_handler_called && exit 0; exit 1' CONT; "
+                    "log sleeping; sleep ${SUBPROC_SLEEP:=0}; log wakeup; "
                     // Suspend Ninja.
-                    "echo kill TSTP at $(date +%s.%N); "
+                    "log kill TSTP; "
                     "kill -TSTP $PPID; "
                     // Give 10s max to Ninja to send SIGTSTP to its children.
                     // Note: using "sleep 10" slow down the test in the success
@@ -222,8 +224,9 @@ TEST_F(SubprocessTest, Suspend) {
                     // At this point our signal handlers were not called.
                     // It means that Ninja did not worked as expected.
                     // We wake Ninja up so that the test finished and fails.
-                    "echo Ninja SIGTSTP signal handler has not been called; "
+                    "echo Ninja SIGTSTP&SIGCONT signal handler not called; "
                     "echo tstp_handler_called=$tstp_handler_called; "
+                    "log kill CONT ending; "
                     "kill -CONT $PPID; "
                     "exit 1; ");
     if (subproc == (Subprocess*)0)

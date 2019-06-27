@@ -419,6 +419,11 @@ static void DBG(const char* msg) {
 void SubprocessSet::Suspend() {
   assert(IsSuspended());
   DBG("Suspend begin");
+  {
+    char buf[64];
+    itoa(getpid(), buf);
+    DBG(buf);
+  }
 
   // errno may change during the course of this function.
   int saved_errno = errno;
@@ -433,8 +438,10 @@ void SubprocessSet::Suspend() {
       char buf[64];
       itoa((*i)->pid_, buf);
       DBG(buf);
-      Xkill((*i)->pid_, SIGTSTP);
+      Xkill(-(*i)->pid_, SIGTSTP);
     }
+
+  sleep(1); // make sure signal is delivered
 
   // Tell users what we have done.
   {
@@ -473,8 +480,13 @@ void SubprocessSet::Suspend() {
   // Wake-up children.
   for (vector<Subprocess*>::iterator i = running_.begin();
        i != running_.end(); ++i)
-    if (!(*i)->use_console_)
+    if (!(*i)->use_console_) {
+      DBG("kill SIGCONT");
+      char buf[64];
+      itoa((*i)->pid_, buf);
+      DBG(buf);
       Xkill(-(*i)->pid_, SIGCONT);
+    }
 
   // Restore errno.
   errno = saved_errno;
