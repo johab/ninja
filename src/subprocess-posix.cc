@@ -18,13 +18,18 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <poll.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <spawn.h>
 #include <sys/ioctl.h>
+
+#if defined(USE_PPOLL)
+#include <poll.h>
+#else
+#include <sys/select.h>
+#endif
 
 extern char** environ;
 
