@@ -38,3 +38,6 @@
 
 # Qt Creator project files
 /CMakeLists.txt.user
+
+# Editor backup files
+*~
