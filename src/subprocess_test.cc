@@ -30,6 +30,8 @@
 
 #include <iostream>
 
+using namespace std;
+
 namespace {
 
 #ifdef _WIN32
